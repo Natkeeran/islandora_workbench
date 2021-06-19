@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+
+# Usage: ./workbench --config config.yml --check
+# Usage: ./workbench --config config.yml
+
+import os
+import sys
+import copy
+import json
+import csv
+import logging
+import datetime
+import argparse
+import collections
+import subprocess
+from progress_bar import InitBar
+from workbench_utils_lite import *
+import workbench_fields
+
+
+
+def set_config_defaults_islandora_lite(config):
+
+    media_fields = dict({
+        'file': 'field_media_file',
+        'document': 'field_media_document',
+        'image': 'field_media_image',
+        'audio': 'field_media_audio_file',
+        'video': 'field_media_video_file',
+        'extracted_text': 'field_media_file',
+        'fits_technical_metadata': 'field_media_file'
+    })
+    if 'media_file_fields' in config:
+        for media_field in config['media_file_fields']:
+            for media_type, media_field in media_field.items():
+                media_fields[media_type] = media_field
+    else:
+        config['media_fields'] = media_fields
+
+    config['media_bundle_file_fields'] = media_fields
+
+    return config
+
+
+def add_media_islandora_lite():
+    """Add media to existing nodes using PUT.
+    """
+    csv_data = get_csv_data(config)
+
+    row_count = 0
+    for row in csv_data:
+        row = clean_csv_values(row)
+        if not ping_node(config, row['node_id']):
+            print("Node " + row['node_id'] + " not found or not " +
+                  "accessible, skipping adding media.")
+            continue
+
+    node_json_url = config['host'] + '/node/' + row['node_id'] + '?_format=json'
+    node_response = issue_request(config, 'GET', node_json_url)
+    if node_response.status_code == 200:
+        media_response_status_code = create_media_islandora_lite(config, row['file'], row['node_id'], row)
+        allowed_media_response_codes = [201, 204]
+        if media_response_status_code in allowed_media_response_codes:
+            print("media successfully created")
+    else:
+        print("it failed to create media")
+
+
+# Main program logic.
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--config', required=True, help='Configuration file to use.')
+parser.add_argument('--check', help='Check input data and exit without creating/updating/etc.', action='store_true')
+parser.add_argument('--get_csv_template', help='Generate a CSV template using the specified configuration file.', action='store_true')
+args = parser.parse_args()
+
+config = set_config_defaults(args)
+config = set_config_defaults_islandora_lite(config)
+
+logging.basicConfig(
+    filename=config['log_file_path'],
+    level=logging.INFO,
+    filemode=config['log_file_mode'],
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%d-%b-%y %H:%M:%S')
+
+if config['task'] != 'create_from_files' and config['input_csv'].startswith('http') is True:
+    get_csv_from_google_sheet(config)
+if config['task'] != 'create_from_files' and config['input_csv'].endswith('.xlsx') is True:
+    get_csv_from_excel(config)
+
+ping_islandora(config, print_message=True)
+
+if config['nodes_only'] is False:
+    check_drupal_core_version(config)
+
+drupal_8 = set_drupal_8(config)
+
+# Apparently, there's no built-in way of getting the number of items in a
+# DictReader, so we read the CSV file, convert it to a list, and get its length.
+if config['progress_bar'] is True:
+    if config['task'] != 'create_from_files':
+        csv_data_as_list = list(get_csv_data(config))
+        num_csv_records = len(csv_data_as_list)
+    pbar = InitBar()
+
+if 'get_csv_template' in config.keys():
+    if config['get_csv_template']:
+        get_csv_template(config, args)
+
+if 'check' in config.keys():
+    if config['check']:
+        if config['task'] == 'create_from_files':
+            check_input_for_create_from_files(config, args)
+        else:
+            check_input(config, args)
+
+# Execute bootstrap scripts, if any are configured.
+if 'bootstrap' in config and len(config['bootstrap']) > 0:
+    for command in config['bootstrap']:
+        print("Executing bootstrap script " + command)
+        output, return_code = execute_bootstrap_script(command, args.config)
+
+if config['task'] == 'add_media_islandora_lite':
+    add_media_islandora_lite()
+
+
+if config['secondary_tasks'] is not None:
+    for secondary_config_file in config['secondary_tasks']:
+        message = 'Executing secondary task using configuration file "' + secondary_config_file + '"'
+        print('')
+        print(message)
+        logging.info(message)
+        cmd = ["./workbench", "--config", secondary_config_file]
+        output = subprocess.run(cmd)
+
+    map_file_path = os.path.join(config['input_dir'], config['secondary_tasks_data_file'])
+    if os.path.exists(map_file_path):
+        os.remove(map_file_path)

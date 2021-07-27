@@ -1,0 +1,12 @@
+task: create
+#host: "http://core.digital.utsc.utoronto.ca"
+host: "http://localhost:8000"
+username: admin
+password: islandora
+input_csv: 'https://docs.google.com/spreadsheets/d/1DduGYHGL6Z3p0TsdhrnspUJtNyLWvXdnY18hQ9KDNFE/edit?usp=sharing'
+google_sheets_gid: 0
+nodes_only: true
+content_type: islandora_object
+subdelimiter: "|"
+allow_adding_terms: true
+parent_child_relation_field: field_part_of

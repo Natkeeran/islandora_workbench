@@ -14,10 +14,8 @@ import argparse
 import collections
 import subprocess
 from progress_bar import InitBar
-from workbench_utils_lite import *
+from workbench_utils_islandora_lite import *
 import workbench_fields
-
-
 
 def set_config_defaults_islandora_lite(config):
 
@@ -55,15 +53,15 @@ def add_media_islandora_lite():
                   "accessible, skipping adding media.")
             continue
 
-    node_json_url = config['host'] + '/node/' + row['node_id'] + '?_format=json'
-    node_response = issue_request(config, 'GET', node_json_url)
-    if node_response.status_code == 200:
-        media_response_status_code = create_media_islandora_lite(config, row['file'], row['node_id'], row)
-        allowed_media_response_codes = [201, 204]
-        if media_response_status_code in allowed_media_response_codes:
-            print("media successfully created")
-    else:
-        print("it failed to create media")
+        node_json_url = config['host'] + '/node/' + row['node_id'] + '?_format=json'
+        node_response = issue_request(config, 'GET', node_json_url)
+        if node_response.status_code == 200:
+            media_response_status_code = create_media_islandora_lite(config, row['file'], row['node_id'], row)
+            allowed_media_response_codes = [200]
+            if media_response_status_code in allowed_media_response_codes:
+                print("media successfully attached")
+        else:
+            print("it failed to create media")
 
 
 # Main program logic.
@@ -109,18 +107,28 @@ if 'get_csv_template' in config.keys():
         get_csv_template(config, args)
 
 if 'check' in config.keys():
+    # We want to call the main validation input
+    # thus storing the islandora_lite task to be put back at the end of this condition
+    current_task = config["task"]
+
     if config['check']:
         if config['task'] == 'create_from_files':
             check_input_for_create_from_files(config, args)
         else:
-            check_input(config, args)
+            # TODO: Review to see if we need to add any custom logic for validating input!
+            if config["task"] == "add_media_islandora_lite":
+                config["task"] = "add_media"
+                # Needed to pass validation
+                check_input(config, args)
+
+    config["task"] = current_task
 
 # Execute bootstrap scripts, if any are configured.
 if 'bootstrap' in config and len(config['bootstrap']) > 0:
     for command in config['bootstrap']:
         print("Executing bootstrap script " + command)
         output, return_code = execute_bootstrap_script(command, args.config)
-
+        
 if config['task'] == 'add_media_islandora_lite':
     add_media_islandora_lite()
 

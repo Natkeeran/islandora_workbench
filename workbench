@@ -45,7 +45,7 @@ def create():
     row_count = 0
     for row in csv_data:
         row = clean_csv_values(row)
-
+        
         # Create a copy of the current item's row to pass to create_media().
         row_for_media = copy.deepcopy(row)
         if config['paged_content_from_directories'] is True:
@@ -93,8 +93,12 @@ def create():
 
         # If a node with an ID that matches the current item's 'parent_id'
         # value has just been created, make the item a child of the node.
+        row['field_part_of'] = ""
         if 'parent_id' in row.keys() and row['parent_id'] in node_ids:
-            row['field_member_of'] = node_ids[row['parent_id']]
+            # TODO: Need to support different property for paged content 
+            # row['field_member_of'] = node_ids[row['parent_id']]
+            row['field_part_of'] = node_ids[row['parent_id']]
+            
 
         # For children whose parent node was created in the 'primary' job.
         # The secondary task data file contains the names of the YAML config
@@ -119,7 +123,8 @@ def create():
             # This field can exist in the CSV to create parent/child
             # relationships and is not a Drupal field.
             if custom_field == 'parent_id':
-                continue
+                custom_field = "field_part_of"
+                # TODO: Need to support different property for paged content 
 
             # 'langcode' is a core Drupal field, but is not considered a "base field".
             if custom_field == 'langcode':
@@ -181,7 +186,7 @@ def create():
                     else:
                         row[custom_field] = prepare_term_id(config, field_vocabs, row[custom_field])
                         if value_is_numeric(row[custom_field]):
-                            row[custom_field] = str(row[custom_field])
+                            row[custom_field] = str(row[custom_field])            
 
                 if field_definitions[custom_field]['target_type'] == 'node':
                     target_type = 'node_type'

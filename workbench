@@ -306,8 +306,12 @@ def create():
             logging.info("Node for %s (record %s) created at %s.", row['title'], id_field, node_uri)
             if 'output_csv' in config.keys():
                 write_to_output_csv(config, id_field, node_response.text)
+            if 'node_write_log_csv' in config.keys():
+                write_to_node_log_csv(config, id_field, row['title'], node_id)
         else:
             logging.error("Node for CSV record %s not created, HTTP response code was %s.", id_field, node_response.status_code)
+            if 'node_write_log_csv' in config.keys():
+                write_to_node_log_csv(config, id_field, row['title'], -1)
             continue
 
         # Execute node-specific post-create scripts, if any are configured.

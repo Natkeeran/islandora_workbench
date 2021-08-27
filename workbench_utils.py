@@ -3725,6 +3725,19 @@ def get_percentage(part, whole):
     return 100 * float(part) / float(whole)
 
 def write_to_node_log_csv(config, id_field, title, node_id):
+    """Writes node creation info to a .csv file specified in config. 
+
+           Parameters
+           ----------
+            config : dictfilename
+                The configuration object defined by set_config_defaults().
+            id_field : string
+                The id field. 
+            title: string
+                The title of the page. 
+            node_id: string
+                The created Drupal node id or -1 if creation failed.
+    """
     csvfile = open(config['node_write_log_csv'], 'a+')
     writer = csv.DictWriter(csvfile, fieldnames=['record', 'title', 'node_id'], lineterminator='\n')
 

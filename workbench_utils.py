@@ -3723,3 +3723,34 @@ def read_node_ids_tsv(config):
 
 def get_percentage(part, whole):
     return 100 * float(part) / float(whole)
+
+def write_to_node_log_csv(config, id_field, title, node_id):
+    """Writes node creation info to a .csv file specified in config. 
+
+           Parameters
+           ----------
+            config : dictfilename
+                The configuration object defined by set_config_defaults().
+            id_field : string
+                The id field. 
+            title: string
+                The title of the page. 
+            node_id: string
+                The created Drupal node id or -1 if creation failed.
+    """
+    csvfile = open(config['node_write_log_csv'], 'a+')
+    writer = csv.DictWriter(csvfile, fieldnames=['record', 'title', 'node_id'], lineterminator='\n')
+
+    # Check for presence of header row, don't add it if it's already there.
+    with open(config['node_write_log_csv']) as f:
+        first_line = f.readline()
+    if not first_line.startswith('record'):
+        writer.writeheader()
+
+    # Assemble the CSV record to write.
+    row = dict()
+    row['node_id'] = node_id
+    row['record'] = id_field
+    row['title'] = title
+    writer.writerow(row)
+    csvfile.close()

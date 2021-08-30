@@ -215,3 +215,37 @@ def create_media_islandora_lite(config, filename, node_id, node_csv_row):
         return file_result      
 
 
+def write_media_ingest_log_csv(config, source_row, success, reason=""):
+    """Writes media ingestion info to a .csv file specified in config. 
+    
+           Parameters
+           ----------
+            config : dictfilename
+                The configuration object defined by set_config_defaults().
+            source_row : dict
+                Row from a .csv file that specifies node information. Should have fields:
+                node_id, id, title.
+            success: boolean
+                The success status of data ingestion.
+            reason: string
+                The reason given for a failed ingestion.
+    """
+    csvfile = open(config['node_ingest_log_csv'], 'a+')
+    csv_field_names = ['record', 'title', 'node_id', 'success', 'reason']
+    writer = csv.DictWriter(csvfile, fieldnames=csv_field_names, lineterminator='\n')
+
+    # Check for presence of header row, don't add it if it's already there.
+    with open(config['node_ingest_log_csv']) as f:
+        first_line = f.readline()
+    if not first_line.startswith('record'):
+        writer.writeheader()
+
+    # Assemble the CSV record to write.
+    row = dict()
+    row['node_id'] = source_row['node_id']
+    row['record'] = source_row['id']
+    row['title'] = source_row['title']
+    row['success'] = success
+    row['reason'] = reason
+    writer.writerow(row)
+    csvfile.close()

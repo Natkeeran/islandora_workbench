@@ -51,6 +51,8 @@ def add_media_islandora_lite():
         if not ping_node(config, row['node_id']):
             print("Node " + row['node_id'] + " not found or not " +
                   "accessible, skipping adding media.")
+            if config['node_ingest_log_csv']:
+                write_media_ingest_log_csv(config, row, False, "Node not found")
             continue
 
         node_json_url = config['host'] + '/node/' + row['node_id'] + '?_format=json'
@@ -60,8 +62,15 @@ def add_media_islandora_lite():
             allowed_media_response_codes = [200]
             if media_response_status_code in allowed_media_response_codes:
                 print("media successfully attached")
+                if config['node_ingest_log_csv']:
+                    write_media_ingest_log_csv(config, row, True)
+            else:
+                if config['node_ingest_log_csv']:
+                    write_media_ingest_log_csv(config, row, False, "Media failed to attach")
         else:
             print("it failed to create media")
+            if config['node_ingest_log_csv']:
+                write_media_ingest_log_csv(config, row, False, "Media failed to create")
 
 
 # Main program logic.
